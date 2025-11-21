@@ -1,154 +1,226 @@
 package com.example.arenero.screens
 
+import android.os.Build
 import android.widget.Toast
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.arenero.R
+import com.example.arenero.ApiConexion
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HomeArena()
-{
-    val context = LocalContext.current
+fun HomeScreen() {
 
-    Box(
+    var pesos by remember { mutableStateOf(listOf<Float>()) }
+    var distancias by remember { mutableStateOf(listOf<Float>()) }
+    var limpiezas by remember { mutableStateOf(listOf<Float>()) }
+
+    // Auto actualización cada 10 segundos
+    LaunchedEffect(true) {
+        while (true) {
+            ApiConexion().obtenerDatos { p, d, l ->
+                pesos = p
+                distancias = d
+                limpiezas = l
+            }
+            delay(10_000) // cada 10 segundos
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFE3F2FD))
+            .background(Color(0xFF101010))
+            .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+
+        // ----------------------
+        // HEADER
+        // ----------------------
+        Text(
+            "Panel del Arenero IoT",
+            color = Color.White,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ----------------------
+        // CARDS DE INDICADORES
+        // ----------------------
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(70.dp)
-                    .background(color = Color(0xff01579b)),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "LitterBoxx",
-                        color = Color.White,
-                        style = TextStyle(fontSize = 32.sp),
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Estadisticas",
-                color = Color(0xff01579b),
-                textAlign = TextAlign.Center,
-                style = TextStyle(fontSize = 24.sp),
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+            SensorCard(
+                titulo = "Peso",
+                valor = pesos.firstOrNull()?.toString() ?: "--",
+                unidad = "g",
+                color = Color(0xFF42A5F5)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Image(
-                painter = painterResource(id = R.drawable.grafica),
-                contentDescription = "Grafica",
-                modifier = Modifier
-                    .size(300.dp)
-                    .align(Alignment.CenterHorizontally)
+            SensorCard(
+                titulo = "Distancia",
+                valor = distancias.firstOrNull()?.toString() ?: "--",
+                unidad = "cm",
+                color = Color(0xFFFFC107)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            SectionButton("Limpiar", Color(0xFF7A858F), R.drawable.pala) {
-                Toast.makeText(context,"Funcionalidad por implementar",Toast.LENGTH_SHORT).show()
-            }
-
+            SensorCard(
+                titulo = "Limpieza",
+                valor = limpiezas.firstOrNull()?.toString() ?:"--",
+                unidad = "0 No necesaria   1 Necesaria",
+                color = if (limpiezas.firstOrNull() == 1f) Color(0xFF66BB6A)
+                else Color(0xFFEF5350)
+            )
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        var loading by remember { mutableStateOf(false) }
+        var mensaje by remember { mutableStateOf("") }
+
+        Button(
+            onClick = {
+                loading = true
+                mensaje = ""
+
+                ApiConexion().activarLimpieza { ok ->
+                    loading = false
+                    mensaje = if (ok)
+                        "Limpieza activada correctamente!"
+                    else
+                        "Error al activar la limpieza"
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF80D8FF)
+            )
+        ) {
+            Text(text = if (loading) "Activando..." else "Iniciar limpieza")
+        }
+
+        if (mensaje.isNotEmpty()) {
+        }
+
+
+        // ----------------------
+        // GRÁFICAS
+        // ----------------------
+
+        Text(
+            "Historial de Peso",
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium
+        )
+        LineChartView(
+            title = "Peso del gato (g)",
+            values = pesos,
+            modifier = Modifier
+                .height(220.dp)
+                .fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            "Distancia Detectada",
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium
+        )
+        LineChartView(
+            title = "Distancia (cm)",
+            values = distancias,
+            modifier = Modifier
+                .height(220.dp)
+                .fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            "Eventos de Limpieza",
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium
+        )
+        BarChartView(
+            title = "Eventos de limpieza",
+            values = limpiezas,
+            modifier = Modifier
+                .height(220.dp)
+                .fillMaxWidth()
+        )
     }
 }
 
 @Composable
-fun SectionButton(
-    text: String,
-    color: Color,
-    image: Int,
-    onClick: () -> Unit
-) {
-    var isClickable by remember { mutableStateOf(true) }
-    val coroutineScope = rememberCoroutineScope()
+fun Limpieza(
+    titulo: String
+){
 
-    Box(
+}
+
+
+@Composable
+fun SensorCard(
+    titulo: String,
+    valor: String,
+    unidad: String,
+    color: Color
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1C1C1C)
+        ),
         modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(color)
-            .clickable(enabled = isClickable) {
-                isClickable = false
-                onClick()
-                coroutineScope.launch {
-                    delay(1000)
-                    isClickable = true
-                }
-            }
-            .padding(20.dp)
+            .width(110.dp)
+            .height(110.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = image),
-                contentDescription = null,
-                modifier = Modifier.size(100.dp)
-            )
-            Spacer(modifier = Modifier.width(20.dp))
+        Column(
+            Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
             Text(
-                text = text,
-                fontSize = 22.sp,
+                titulo,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                valor,
+                color = color,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                unidad,
+                color = Color(0xFFB0BEC5),
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    HomeScreen()
 }

@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
-import com.example.arenero.screens.HomeArena
+import com.example.arenero.screens.HomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?){
@@ -29,7 +29,7 @@ fun AppNavigation() {
         startDestination = "home"
     ) {
         composable("home") {
-            HomeArena()
+            HomeScreen()
         }
     }
 }
