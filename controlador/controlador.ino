@@ -35,6 +35,7 @@ int limpieza;
 // Dirección API en Azure
 String serverName = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net/api/datos";
 String iniciarLim = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net/api/estado_limpieza";
+String limRealizada = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net/api/limpieza_realizada";
 
 void setup() {
   Serial.begin(115200);
@@ -174,6 +175,25 @@ void loop() {
   if (limpieza == 1){
     Serial.println("Se limpio el arenero");
     limpieza = 0;
+    if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    http.begin(limRealizada);  // Inicia conexión HTTP
+
+    // Enviar POST
+    int httpResponseCode = http.POST("");
+
+    if (httpResponseCode > 0) {
+      Serial.print("Código de respuesta: ");
+      Serial.println(httpResponseCode);
+      String respuesta = http.getString();
+      Serial.println("Respuesta del servidor: " + respuesta);
+
+    } else {
+      Serial.print("Error en POST: ");
+      Serial.println(httpResponseCode);
+    }
+    }
   }
 
   digitalWrite(dir, HIGH);
