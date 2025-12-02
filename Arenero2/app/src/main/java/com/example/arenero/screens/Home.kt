@@ -37,7 +37,7 @@ fun HomeScreen() {
     var distancias by remember { mutableStateOf(listOf<Float>()) }
     var limpiezas by remember { mutableStateOf(listOf<Float>()) }
 
-    // Auto actualización cada 10 segundos
+    // Auto actualización cada 5 segundos
     LaunchedEffect(true) {
         while (true) {
             try {
@@ -51,9 +51,7 @@ fun HomeScreen() {
                 var Mensaje = ("Error en la obtención de datos: ${e.message}")
                 showToast(Mensaje)
             }
-
-            // La coroutine espera 30 segundos *después* de que la petición terminó
-            delay(30_000)
+            delay(5_000)
         }
     }
 
@@ -164,7 +162,7 @@ fun HomeScreen() {
                style = MaterialTheme.typography.titleMedium
            )
            LineChartView(
-               title = "Peso del gato (g)",
+               title = "Peso del Arenero (kg)",
                values = pesos,
                modifier = Modifier
                    .height(220.dp)
