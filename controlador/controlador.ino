@@ -1,16 +1,21 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <HX711_ADC.h>
+#include <ArduinoJson.h>
 #if defined(ESP8266)|| defined(ESP32) || defined(AVR)
 #include <EEPROM.h>
 #endif
 
-// Credenciales WiFi
-//const char* ssid = "Fell_dragon_grima";
-//const char* password = "Peni_parker_b3st";
+//Motor a pasos
+#define step 22
+#define dir 23
 
+//Credenciales WiFi
+const char* ssid = "Fell_dragon_grima";
+const char* password = "Peni_parker_b3st";
+/*
 const char* ssid = "saquenmedeaqui";
-const char* password = "12345678";
+const char* password = "12345678";*/
 
 //Sensor de peso
 const int HX711_dout = 4; //mcu > HX711 dout pin
@@ -24,16 +29,13 @@ const int TRIG = 18;
 const int ECO = 19;
 int duracion;
 int distancia;
+int peso;
+int limpieza;
 
-//Motor a pasos
-const int paso1 = 13;
-const int paso2 = 12;
-const int paso3 = 14;
-const int paso4 = 27;
-
-
-// Dirección de tu API en Azure
-String serverName = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net";
+// Dirección API en Azure
+String serverName = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net/api/datos";
+String iniciarLim = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net/api/estado_limpieza";
+String limRealizada = "https://areneroiot-dhdbb9hcc0a0g3cs.canadacentral-01.azurewebsites.net/api/limpieza_realizada";
 
 void setup() {
   Serial.begin(115200);
@@ -69,10 +71,8 @@ void setup() {
   pinMode(ECO, INPUT);
 
   //Iniciar motor a pasos
-  pinMode(paso1, OUTPUT);
-  pinMode(paso2, OUTPUT);
-  pinMode(paso3, OUTPUT);
-  pinMode(paso4, OUTPUT);
+  pinMode(step, OUTPUT);
+  pinMode(dir, OUTPUT);
 }
 
 void loop() {
@@ -93,11 +93,14 @@ void loop() {
       float i = LoadCell.getData();
       Serial.print("Load_cell output val: ");
       i = i / 1000;
+      peso = i;
       Serial.println(i);
       newDataReady = 0;
       t = millis();
     }
   }
+
+  limpieza = 0;
 
   // receive command from serial terminal
   if (Serial.available() > 0) {
@@ -118,8 +121,12 @@ void loop() {
     http.begin(serverName);  // Inicia conexión HTTP
     http.addHeader("Content-Type", "application/json"); // Indicamos que mandamos JSON
 
+    Serial.println(peso);
     // JSON con datos simulados
-    String json = "{\"peso\": 3.5, \"distancia\": 15, \"estado\": \"OK\"}";
+    String json = "{\"peso\": " + String(peso);
+    json = json + ", \"distancia\": " + String(distancia); 
+    json = json + ", \"limpieza\": " + String(limpieza) + "}";
+    Serial.println(json);
 
     // Enviar POST
     int httpResponseCode = http.POST(json);
@@ -129,8 +136,34 @@ void loop() {
       Serial.println(httpResponseCode);
       String respuesta = http.getString();
       Serial.println("Respuesta del servidor: " + respuesta);
+
+      //Leer los datos
+      JsonDocument doc;
+      deserializeJson(doc, respuesta);
+      limpieza = doc["limpieza"];
     } else {
       Serial.print("Error en POST: ");
+      Serial.println(httpResponseCode);
+    }
+
+    http.begin(iniciarLim);
+    httpResponseCode = http.GET();
+
+    if (httpResponseCode > 0) {
+      Serial.print("Código de respuesta: ");
+      Serial.println(httpResponseCode);
+      String respuesta = http.getString();
+      Serial.println("Respuesta del servidor: " + respuesta);
+
+      //Leer los datos
+      JsonDocument doc;
+      deserializeJson(doc, respuesta);
+      bool lim = doc["limpieza_solicitada"];
+      if (lim){
+        limpieza = 1;
+      }
+    } else {
+      Serial.print("Error en GET: ");
       Serial.println(httpResponseCode);
     }
 
@@ -139,74 +172,50 @@ void loop() {
     Serial.println("WiFi desconectado");
   }
 
-  //vuelta(10);
+  if (limpieza == 1){
+    Serial.println("Se limpio el arenero");
+    limpieza = 0;
+    if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    http.begin(limRealizada);  // Inicia conexión HTTP
+
+    // Enviar POST
+    int httpResponseCode = http.POST("");
+
+    if (httpResponseCode > 0) {
+      Serial.print("Código de respuesta: ");
+      Serial.println(httpResponseCode);
+      String respuesta = http.getString();
+      Serial.println("Respuesta del servidor: " + respuesta);
+
+    } else {
+      Serial.print("Error en POST: ");
+      Serial.println(httpResponseCode);
+    }
+    }
+  }
+
+  digitalWrite(dir, HIGH);
+  for(int i = 0; i < 400; i++){
+    digitalWrite(step, HIGH);
+    delayMicroseconds(700);
+    digitalWrite(step, LOW);
+    delayMicroseconds(700);
+  }
+  delay(1000);
+
+  digitalWrite(dir, LOW);
+  for(int i = 0; i < 400; i++){
+    digitalWrite(step, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(step, LOW);
+    delayMicroseconds(500);
+  }
+  delay(1000);
 
 
   delay(1000); // Espera 10 seg antes de mandar otra petición
-}
-
-void vuelta(int veces)
-{
-  digitalWrite(paso1, HIGH);
-  digitalWrite(paso2, LOW);
-  digitalWrite(paso3, LOW);
-  digitalWrite(paso4, LOW);
-
-  delay(500);
-
-  digitalWrite(paso1, HIGH);
-  digitalWrite(paso2, HIGH);
-  digitalWrite(paso3, LOW);
-  digitalWrite(paso4, LOW);
-
-  delay(500);
-
-  digitalWrite(paso1, LOW);
-  digitalWrite(paso2, HIGH);
-  digitalWrite(paso3, LOW);
-  digitalWrite(paso4, LOW);
-
-  delay(500);
-
-  digitalWrite(paso1, LOW);
-  digitalWrite(paso2, HIGH);
-  digitalWrite(paso3, HIGH);
-  digitalWrite(paso4, LOW);
-
-  delay(500);
-
-  digitalWrite(paso1, LOW);
-  digitalWrite(paso2, LOW);
-  digitalWrite(paso3, HIGH);
-  digitalWrite(paso4, LOW);
-
-  delay(500);
-
-  digitalWrite(paso1, LOW);
-  digitalWrite(paso2, LOW);
-  digitalWrite(paso3, HIGH);
-  digitalWrite(paso4, HIGH);
-
-  delay(500);
-
-  digitalWrite(paso1, LOW);
-  digitalWrite(paso2, LOW);
-  digitalWrite(paso3, LOW);
-  digitalWrite(paso4, HIGH);
-
-  delay(500);
-
-  digitalWrite(paso1, HIGH);
-  digitalWrite(paso2, LOW);
-  digitalWrite(paso3, LOW);
-  digitalWrite(paso4, HIGH);
-
-  delay(500);
-
-  if (veces > 0)
-  {
-    vuelta(veces - 1);
-  }
 }
 
 void calibrate() {
