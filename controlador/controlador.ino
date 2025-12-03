@@ -2,20 +2,23 @@
 #include <HTTPClient.h>
 #include <HX711_ADC.h>
 #include <ArduinoJson.h>
+#include <ESP32Servo.h>
 #if defined(ESP8266)|| defined(ESP32) || defined(AVR)
 #include <EEPROM.h>
 #endif
 
 //Motor a pasos
-#define step 22
-#define dir 23
+//#define step 22
+//#define dir 23
+
+Servo servo;
+
+const char* ssid = "CETI-Prov";
+const char* password = "C3T1provisional";
 
 //Credenciales WiFi
-const char* ssid = "Fell_dragon_grima";
-const char* password = "Peni_parker_b3st";
-/*
-const char* ssid = "saquenmedeaqui";
-const char* password = "12345678";*/
+//const char* ssid = "Fell_dragon_grima";
+//const char* password = "Peni_parker_b3st";
 
 //Sensor de peso
 const int HX711_dout = 4; //mcu > HX711 dout pin
@@ -71,8 +74,8 @@ void setup() {
   pinMode(ECO, INPUT);
 
   //Iniciar motor a pasos
-  pinMode(step, OUTPUT);
-  pinMode(dir, OUTPUT);
+  servo.attach(23, 500, 2500);
+  servo.write(0);
 }
 
 void loop() {
@@ -92,7 +95,6 @@ void loop() {
     if (millis() > t + serialPrintInterval) {
       float i = LoadCell.getData();
       Serial.print("Load_cell output val: ");
-      i = i / 1000;
       peso = i;
       Serial.println(i);
       newDataReady = 0;
@@ -175,6 +177,16 @@ void loop() {
   if (limpieza == 1){
     Serial.println("Se limpio el arenero");
     limpieza = 0;
+    servo.write(90);
+    delay(1000);
+    servo.write(85);
+    delay(1000);
+    servo.write(90);
+    delay(1000);
+    servo.write(85);
+    delay(1000);
+    servo.write(0);
+
     if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
 
@@ -195,25 +207,6 @@ void loop() {
     }
     }
   }
-
-  digitalWrite(dir, HIGH);
-  for(int i = 0; i < 400; i++){
-    digitalWrite(step, HIGH);
-    delayMicroseconds(700);
-    digitalWrite(step, LOW);
-    delayMicroseconds(700);
-  }
-  delay(1000);
-
-  digitalWrite(dir, LOW);
-  for(int i = 0; i < 400; i++){
-    digitalWrite(step, HIGH);
-    delayMicroseconds(500);
-    digitalWrite(step, LOW);
-    delayMicroseconds(500);
-  }
-  delay(1000);
-
 
   delay(1000); // Espera 10 seg antes de mandar otra petición
 }
