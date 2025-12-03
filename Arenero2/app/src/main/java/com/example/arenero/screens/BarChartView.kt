@@ -32,10 +32,8 @@ fun BarChartView(
                 setDrawGridBackground(false)
                 setDrawBorders(false)
 
-                // Animación
                 animateY(900)
 
-                // Eje X
                 xAxis.apply {
                     position = XAxis.XAxisPosition.BOTTOM
                     textColor = Color.parseColor("#B0BEC5")
@@ -44,7 +42,6 @@ fun BarChartView(
                     granularity = 1f
                 }
 
-                // Eje Y
                 axisLeft.apply {
                     textColor = Color.parseColor("#B0BEC5")
                     gridColor = Color.parseColor("#263238")
